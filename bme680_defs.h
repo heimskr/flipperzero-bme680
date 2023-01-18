@@ -587,20 +587,6 @@ struct bme68x_data {
 
 	// Gas wait period
 	uint8_t gas_wait;
-#ifndef BME68X_USE_FPU
-
-	// Temperature in degree celsius x100
-	int16_t temperature;
-
-	// Pressure in Pascal
-	uint32_t pressure;
-
-	// Humidity in % relative humidity x1000
-	uint32_t humidity;
-
-	// Gas resistance in Ohms
-	uint32_t gas_resistance;
-#else
 
 	// Temperature in degree celsius
 	float temperature;
@@ -612,17 +598,13 @@ struct bme68x_data {
 	float humidity;
 
 	// Gas resistance in Ohms
-	float gas_resistance;
-
-#endif
-
+	float gasResistance;
 };
 
 /*
  * Structure to hold the calibration coefficients
  */
-struct bme68x_calib_data
-{
+struct bme68x_calib_data {
 	// Calibration coefficient for the humidity sensor
 	uint16_t par_h1;
 
@@ -691,15 +673,9 @@ struct bme68x_calib_data
 
 	// Calibration coefficient for the pressure sensor
 	uint8_t par_p10;
-#ifndef BME68X_USE_FPU
-
-	// Variable to store the intermediate temperature coefficient
-	int32_t t_fine;
-#else
 
 	// Variable to store the intermediate temperature coefficient
 	float t_fine;
-#endif
 
 	// Heater resistance range coefficient
 	uint8_t res_heat_range;

@@ -40,31 +40,57 @@ float BME680::readAltitude(float sea_level) {
 	return 44330.0 * (1.0 - pow(atmospheric / sea_level, 0.1903));
 }
 
-bool BME680::setTemperatureOversampling(uint8_t os) {
-
+bool BME680::setTemperatureOversampling(uint8_t oversample) {
+	if (oversample > BME68X_OS_16X)
+		return false;
+	gasConf.os_temp = oversample;
+	const int8_t result = setConf(gasConf);
+	return result == 0;
 }
 
-bool BME680::setPressureOversampling(uint8_t os) {
-
+bool BME680::setPressureOversampling(uint8_t oversample) {
+	if (oversample > BME68X_OS_16X)
+		return false;
+	gasConf.os_pres = oversample;
+	const int8_t result = setConf(gasConf);
+	return result == 0;
 }
 
-bool BME680::setHumidityOversampling(uint8_t os) {
-
+bool BME680::setHumidityOversampling(uint8_t oversample) {
+	if (oversample > BME68X_OS_16X)
+		return false;
+	gasConf.os_hum = oversample;
+	const int8_t result = setConf(gasConf);
+	return result == 0;
 }
 
 bool BME680::setIIRFilterSize(uint8_t filtersize) {
 	if (filtersize > BME68X_FILTER_SIZE_127)
 		return false;
 	gasConf.filter = filtersize;
-	return setConf(gasConf) == 0;
+	const int8_t result = setConf(gasConf);
+	return result == 0;
 }
 
-bool BME680::setGasHeater(uint16_t heaterTemp, uint16_t heaterTime) {
+bool BME680::setGasHeater(uint16_t heater_temp, uint16_t heater_time) {
+	if ((heater_temp == 0) || (heater_time == 0)) {
+		gasHeaterConf.enable = BME68X_DISABLE;
+	} else {
+		gasHeaterConf.enable = BME68X_ENABLE;
+		gasHeaterConf.heatr_temp = heater_temp;
+		gasHeaterConf.heatr_dur = heater_time;
+	}
 
+	const int8_t result = setHeaterConf(BME68X_FORCED_MODE, gasHeaterConf);
+	return result == 0;
 }
 
 bool BME680::setODR(uint8_t odr) {
-
+	if (odr > BME68X_ODR_NONE)
+		return false;
+	gasConf.odr = odr;
+	const int8_t result = setConf(gasConf);
+	return result == 0;
 }
 
 bool BME680::performReading() {
@@ -103,10 +129,10 @@ bool BME680::endReading() {
 	measureStart = 0; // Allow new measurement to begin
 	measurePeriod = 0;
 
-	struct bme68x_data data;
+	bme68x_data data;
 	uint8_t n_fields;
 
-	if (getData(BME68X_FORCED_MODE, &data, &n_fields) != BME68X_OK)
+	if (getData(BME68X_FORCED_MODE, &data, n_fields) != BME68X_OK)
 		return false;
 
 	if (n_fields) {
@@ -115,15 +141,15 @@ bool BME680::endReading() {
 		pressure = data.pressure;
 
 		if (data.status & (BME68X_HEAT_STAB_MSK | BME68X_GASM_VALID_MSK))
-			gas_resistance = data.gas_resistance;
+			gasResistance = data.gasResistance;
 		else
-			gas_resistance = 0;
+			gasResistance = 0;
 	}
 
 	return true;
 }
 
-int8_t BME680::getData(uint8_t op_mode, bme68x_data &data, uint8_t &n_data) {
+int8_t BME680::getData(uint8_t op_mode, bme68x_data *data, uint8_t &n_data) {
 	int8_t result;
 	uint8_t i = 0;
 	uint8_t j = 0;
@@ -137,9 +163,9 @@ int8_t BME680::getData(uint8_t op_mode, bme68x_data &data, uint8_t &n_data) {
 
 	// Reading the sensor data in forced mode only
 	if (op_mode == BME68X_FORCED_MODE) {
-		result = readFieldData(0, data);
+		result = readFieldData(0, *data);
 		if (result == BME68X_OK) {
-			if (data.status & BME68X_NEW_DATA_MSK) {
+			if (data->status & BME68X_NEW_DATA_MSK) {
 				new_fields = 1;
 			} else {
 				new_fields = 0;
@@ -148,7 +174,7 @@ int8_t BME680::getData(uint8_t op_mode, bme68x_data &data, uint8_t &n_data) {
 		}
 	} else if ((op_mode == BME68X_PARALLEL_MODE) || (op_mode == BME68X_SEQUENTIAL_MODE)) {
 		// Read the 3 fields and count the number of new data fields
-		result = read_all_field_data(field_ptr);
+		result = readAllFieldData(field_ptr);
 
 		new_fields = 0;
 		for (i = 0; (i < 3) && (result == BME68X_OK); ++i)
@@ -158,7 +184,7 @@ int8_t BME680::getData(uint8_t op_mode, bme68x_data &data, uint8_t &n_data) {
 		// Sort the sensor data in parallel & sequential modes
 		for (i = 0; (i < 2) && (result == BME68X_OK); ++i)
 			for (j = i + 1; j < 3; ++j)
-				sort_sensor_data(i, j, field_ptr);
+				sortSensorData(i, j, field_ptr);
 
 		// Copy the sorted data
 		for (i = 0; ((i < 3) && (result == BME68X_OK)); ++i)
@@ -189,8 +215,8 @@ int8_t BME680::readFieldData(uint8_t index, bme68x_data &data) {
 	while (tries != 0 && result == BME68X_OK) {
 		result = getRegs(static_cast<uint8_t>(BME68X_REG_FIELD0 + (index * BME68X_LEN_FIELD_OFFSET)), buff, static_cast<uint16_t>(BME68X_LEN_FIELD));
 
-		data.status	 = buff[0] & BME68X_NEW_DATA_MSK;
-		data.gas_index	 = buff[0] & BME68X_GAS_INDEX_MSK;
+		data.status = buff[0] & BME68X_NEW_DATA_MSK;
+		data.gas_index = buff[0] & BME68X_GAS_INDEX_MSK;
 		data.meas_index = buff[1];
 
 		/* read the raw data from the sensor */
@@ -202,7 +228,7 @@ int8_t BME680::readFieldData(uint8_t index, bme68x_data &data) {
 		gas_range_l = buff[14] & BME68X_GAS_RANGE_MSK;
 		gas_range_h = buff[16] & BME68X_GAS_RANGE_MSK;
 
-		if (variant_id == BME68X_VARIANT_GAS_HIGH) {
+		if (variantID == BME68X_VARIANT_GAS_HIGH) {
 			data.status |= buff[16] & BME68X_GASM_VALID_MSK;
 			data.status |= buff[16] & BME68X_HEAT_STAB_MSK;
 		} else {
@@ -223,17 +249,17 @@ int8_t BME680::readFieldData(uint8_t index, bme68x_data &data) {
 				data.temperature = calculateTemperature(adc_temp);
 				data.pressure = calculatePressure(adc_pres);
 				data.humidity = calculateHumidity(adc_hum);
-				if (variant_id == BME68X_VARIANT_GAS_HIGH)
-					data.gas_resistance = calculateGasResistanceHigh(adc_gas_res_high, gas_range_h);
+				if (variantID == BME68X_VARIANT_GAS_HIGH)
+					data.gasResistance = calculateGasResistanceHigh(adc_gas_res_high, gas_range_h);
 				else
-					data.gas_resistance = calculateGasResistanceLow(adc_gas_res_low, gas_range_l);
+					data.gasResistance = calculateGasResistanceLow(adc_gas_res_low, gas_range_l);
 
 				break;
 			}
 		}
 
 		if (result == BME68X_OK)
-			furi_delay_us(BME68X_PERIOD_POLL->intf_ptr);
+			furi_delay_us(BME68X_PERIOD_POLL);
 
 		--tries;
 	}
@@ -414,7 +440,7 @@ uint32_t BME680::getMeasurementDuration(uint8_t op_mode) {
 	return measurement_duration;
 }
 
-float BME680::calculateTemperature(uint32_t temp_adc, struct bme68x_dev *dev) {
+float BME680::calculateTemperature(uint32_t temp_adc) {
 	const float var1 = ((((float) temp_adc / 16384.f) - ((float) calib.par_t1 / 1024.f)) * ((float) calib.par_t2));
 	const float var2 = (((((float) temp_adc / 131072.f) - ((float) calib.par_t1 / 8192.f)) * (((float) temp_adc / 131072.f) - ((float) calib.par_t1 / 8192.f))) * ((float) calib.par_t3 * 16.f));
 
@@ -505,7 +531,7 @@ uint8_t BME680::calculateResHeat(uint16_t temp) {
 	var2 = ((((float) calib.par_gh2 / (32768.f)) * (0.0005f)) + 0.00235f);
 	var3 = ((float) calib.par_gh3 / (1024.f));
 	var4 = (var1 * (1.f + (var2 * (float) temp)));
-	var5 = (var4 + (var3 * (float) amb_temp));
+	var5 = (var4 + (var3 * (float) ambTemp));
 	return (uint8_t) (3.4f * ((var5 * (4 / (4 + (float) calib.res_heat_range)) * (1 / (1 + ((float) calib.res_heat_val * 0.002f)))) - 25));
 }
 
@@ -526,4 +552,228 @@ uint8_t BME680::calculateGasWait(uint16_t dur) {
 	}
 
 	return durval;
+}
+
+uint32_t BME680::millis() const {
+	const auto timer = furi_hal_cortex_timer_get(1);
+	return timer.start / (timer.value / 1000);
+}
+
+int BME680::remainingReadingMillis() {
+	if (measureStart != 0) {
+		// A measurement is already in progress
+		int remaining_time = (int) measurePeriod - (millis() - measureStart);
+		return remaining_time < 0? readingComplete : remaining_time;
+	}
+
+	return readingNotStarted;
+}
+
+int8_t BME680::readAllFieldData(bme68x_data * const data[]) {
+	int8_t result = BME68X_OK;
+	uint8_t buff[BME68X_LEN_FIELD * 3] = {0};
+	uint8_t gas_range_l, gas_range_h;
+	uint32_t adc_temp;
+	uint32_t adc_pres;
+	uint16_t adc_hum;
+	uint16_t adc_gas_res_low, adc_gas_res_high;
+	uint8_t off;
+	uint8_t set_val[30] = {0}; // idac, res_heat, gas_wait
+	uint8_t i;
+
+	if (!data[0] && !data[1] && !data[2])
+		result = BME68X_E_NULL_PTR;
+
+	if (result == BME68X_OK)
+		// result = bme68x_get_regs(BME68X_REG_FIELD0, buff, (uint32_t) BME68X_LEN_FIELD * 3, dev);
+		result = getRegs(BME68X_REG_FIELD0, buff, (uint32_t) BME68X_LEN_FIELD * 3);
+
+	if (result == BME68X_OK)
+		result = getRegs(BME68X_REG_IDAC_HEAT0, set_val, 30);
+
+	for (i = 0; (i < 3) && (result == BME68X_OK); i++) {
+		off = (uint8_t) (i * BME68X_LEN_FIELD);
+		data[i]->status = buff[off] & BME68X_NEW_DATA_MSK;
+		data[i]->gas_index = buff[off] & BME68X_GAS_INDEX_MSK;
+		data[i]->meas_index = buff[off + 1];
+
+		/* read the raw data from the sensor */
+		adc_pres = (uint32_t) (((uint32_t) buff[off + 2] * 4096) | ((uint32_t) buff[off + 3] * 16) | ((uint32_t) buff[off + 4] / 16));
+		adc_temp = (uint32_t) (((uint32_t) buff[off + 5] * 4096) | ((uint32_t) buff[off + 6] * 16) | ((uint32_t) buff[off + 7] / 16));
+		adc_hum = (uint16_t) (((uint32_t) buff[off + 8] * 256) | (uint32_t) buff[off + 9]);
+		adc_gas_res_low = (uint16_t) ((uint32_t) buff[off + 13] * 4 | (((uint32_t) buff[off + 14]) / 64));
+		adc_gas_res_high = (uint16_t) ((uint32_t) buff[off + 15] * 4 | (((uint32_t) buff[off + 16]) / 64));
+		gas_range_l = buff[off + 14] & BME68X_GAS_RANGE_MSK;
+		gas_range_h = buff[off + 16] & BME68X_GAS_RANGE_MSK;
+		if (variantID == BME68X_VARIANT_GAS_HIGH) {
+			data[i]->status |= buff[off + 16] & BME68X_GASM_VALID_MSK;
+			data[i]->status |= buff[off + 16] & BME68X_HEAT_STAB_MSK;
+		} else {
+			data[i]->status |= buff[off + 14] & BME68X_GASM_VALID_MSK;
+			data[i]->status |= buff[off + 14] & BME68X_HEAT_STAB_MSK;
+		}
+
+		data[i]->idac = set_val[data[i]->gas_index];
+		data[i]->res_heat = set_val[10 + data[i]->gas_index];
+		data[i]->gas_wait = set_val[20 + data[i]->gas_index];
+		data[i]->temperature = calculateTemperature(adc_temp);
+		data[i]->pressure = calculatePressure(adc_pres);
+		data[i]->humidity = calculateHumidity(adc_hum);
+		if (variantID == BME68X_VARIANT_GAS_HIGH)
+			data[i]->gasResistance = calculateGasResistanceHigh(adc_gas_res_high, gas_range_h);
+		else
+			data[i]->gasResistance = calculateGasResistanceLow(adc_gas_res_low, gas_range_l);
+	}
+
+	return result;
+}
+
+void BME680::sortSensorData(uint8_t low_index, uint8_t high_index, bme68x_data *field[]) {
+	const int16_t meas_index1 = (int16_t) field[low_index]->meas_index;
+	const int16_t meas_index2 = (int16_t) field[high_index]->meas_index;
+	if ((field[low_index]->status & BME68X_NEW_DATA_MSK) && (field[high_index]->status & BME68X_NEW_DATA_MSK)) {
+		int16_t diff = meas_index2 - meas_index1;
+		if (((diff > -3) && (diff < 0)) || (diff > 2))
+			swapFields(low_index, high_index, field);
+	} else if (field[high_index]->status & BME68X_NEW_DATA_MSK) {
+		swapFields(low_index, high_index, field);
+	}
+}
+
+void BME680::swapFields(uint8_t index1, uint8_t index2, bme68x_data *field[]) {
+	struct bme68x_data *temp;
+	temp = field[index1];
+	field[index1] = field[index2];
+	field[index2] = temp;
+}
+
+int8_t BME680::setHeaterConf(uint8_t op_mode, struct bme68x_heatr_conf &conf) {
+	uint8_t nb_conv = 0;
+	uint8_t hctrl, run_gas = 0;
+	uint8_t ctrl_gas_data[2];
+	uint8_t ctrl_gas_addr[2] = {BME68X_REG_CTRL_GAS_0, BME68X_REG_CTRL_GAS_1};
+
+	int8_t result = setOpMode(BME68X_SLEEP_MODE);
+
+	if (result == BME68X_OK)
+		result = setConf(conf, op_mode, nb_conv);
+
+	if (result == BME68X_OK) {
+		result = getRegs(BME68X_REG_CTRL_GAS_0, ctrl_gas_data, 2);
+		if (result == BME68X_OK) {
+			if (conf.enable == BME68X_ENABLE) {
+				hctrl = BME68X_ENABLE_HEATER;
+				if (variantID == BME68X_VARIANT_GAS_HIGH)
+					run_gas = BME68X_ENABLE_GAS_MEAS_H;
+				else
+					run_gas = BME68X_ENABLE_GAS_MEAS_L;
+			} else {
+				hctrl = BME68X_DISABLE_HEATER;
+				run_gas = BME68X_DISABLE_GAS_MEAS;
+			}
+
+			ctrl_gas_data[0] = BME68X_SET_BITS(ctrl_gas_data[0], BME68X_HCTRL, hctrl);
+			ctrl_gas_data[1] = BME68X_SET_BITS_POS_0(ctrl_gas_data[1], BME68X_NBCONV, nb_conv);
+			ctrl_gas_data[1] = BME68X_SET_BITS(ctrl_gas_data[1], BME68X_RUN_GAS, run_gas);
+			result = setRegs(ctrl_gas_addr, ctrl_gas_data, 2);
+		}
+	}
+
+	return result;
+}
+
+int8_t BME680::setConf(const bme68x_heatr_conf &conf, uint8_t op_mode, uint8_t &nb_conv) {
+	int8_t result = BME68X_OK;
+	uint8_t i;
+	uint8_t shared_dur;
+	uint8_t write_len = 0;
+	uint8_t heater_dur_shared_addr = BME68X_REG_SHD_HEATR_DUR;
+	uint8_t rh_reg_addr[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	uint8_t rh_reg_data[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	uint8_t gw_reg_addr[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	uint8_t gw_reg_data[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+	switch (op_mode) {
+		case BME68X_FORCED_MODE:
+			rh_reg_addr[0] = BME68X_REG_RES_HEAT0;
+			rh_reg_data[0] = calculateResHeat(conf.heatr_temp);
+			gw_reg_addr[0] = BME68X_REG_GAS_WAIT0;
+			gw_reg_data[0] = calculateGasWait(conf.heatr_dur);
+			nb_conv = 0;
+			write_len = 1;
+			break;
+
+		case BME68X_SEQUENTIAL_MODE:
+			if ((!conf.heatr_dur_prof) || (!conf.heatr_temp_prof)) {
+				result = BME68X_E_NULL_PTR;
+				break;
+			}
+
+			for (i = 0; i < conf.profile_len; i++) {
+				rh_reg_addr[i] = BME68X_REG_RES_HEAT0 + i;
+				rh_reg_data[i] = calculateResHeat(conf.heatr_temp_prof[i]);
+				gw_reg_addr[i] = BME68X_REG_GAS_WAIT0 + i;
+				gw_reg_data[i] = calculateGasWait(conf.heatr_dur_prof[i]);
+			}
+
+			nb_conv = conf.profile_len;
+			write_len  = conf.profile_len;
+			break;
+
+		case BME68X_PARALLEL_MODE:
+			if ((!conf.heatr_dur_prof) || (!conf.heatr_temp_prof)) {
+				result = BME68X_E_NULL_PTR;
+				break;
+			}
+
+			if (conf.shared_heatr_dur == 0)
+				result = BME68X_W_DEFINE_SHD_HEATR_DUR;
+
+			for (i = 0; i < conf.profile_len; i++) {
+				rh_reg_addr[i] = BME68X_REG_RES_HEAT0 + i;
+				rh_reg_data[i] = calculateResHeat(conf.heatr_temp_prof[i]);
+				gw_reg_addr[i] = BME68X_REG_GAS_WAIT0 + i;
+				gw_reg_data[i] = (uint8_t) conf.heatr_dur_prof[i];
+			}
+
+			nb_conv = conf.profile_len;
+			write_len = conf.profile_len;
+			shared_dur = calculateHeaterDurationShared(conf.shared_heatr_dur);
+			if (result == BME68X_OK)
+				result = setRegs(&heater_dur_shared_addr, &shared_dur, 1);
+
+			break;
+
+		default:
+			result = BME68X_W_DEFINE_OP_MODE;
+	}
+
+	if (result == BME68X_OK)
+		result = setRegs(rh_reg_addr, rh_reg_data, write_len);
+
+	if (result == BME68X_OK)
+		result = setRegs(gw_reg_addr, gw_reg_data, write_len);
+
+	return result;
+}
+
+uint8_t BME680::calculateHeaterDurationShared(uint16_t dur) {
+	uint8_t factor = 0;
+	uint8_t heatdurval;
+
+	if (dur >= 0x783) {
+		// Max duration
+		heatdurval = 0xff;
+	} else {
+		// Step size of 0.477ms
+		dur = (uint16_t) (((uint32_t) dur * 1000) / 477);
+		while (dur > 0x3F) {
+			dur = dur >> 2;
+			factor += 1;
+		}
+
+		heatdurval = (uint8_t) (dur + (factor * 64));
+	}
+
+	return heatdurval;
 }
