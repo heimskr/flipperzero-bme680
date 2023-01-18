@@ -15,36 +15,36 @@ bool BME680::begin() {
 	if (result != BME68X_OK)
 		return false;
 
-	INFO("chipID = %u", chipID);
-	INFO("T1 = %u", calib.par_t1);
-	INFO("T2 = %d", calib.par_t2);
-	INFO("T3 = %d", calib.par_t3);
-	INFO("P1 = %u", calib.par_p1);
-	INFO("P2 = %d", calib.par_p2);
-	INFO("P3 = %d", calib.par_p3);
-	INFO("P4 = %d", calib.par_p4);
-	INFO("P5 = %d", calib.par_p5);
-	INFO("P6 = %d", calib.par_p6);
-	INFO("P7 = %d", calib.par_p7);
-	INFO("P8 = %d", calib.par_p8);
-	INFO("P9 = %d", calib.par_p9);
-	INFO("P10 = %u", calib.par_p10);
-	INFO("H1 = %u", calib.par_h1);
-	INFO("H2 = %u", calib.par_h2);
-	INFO("H3 = %d", calib.par_h3);
-	INFO("H4 = %d", calib.par_h4);
-	INFO("H5 = %d", calib.par_h5);
-	INFO("H6 = %u", calib.par_h6);
-	INFO("H7 = %d", calib.par_h7);
-	INFO("G1 = %d", calib.par_gh1);
-	INFO("G2 = %d", calib.par_gh2);
-	INFO("G3 = %d", calib.par_gh3);
-	INFO("G1 = %d", calib.par_gh1);
-	INFO("G2 = %d", calib.par_gh2);
-	INFO("G3 = %d", calib.par_gh3);
-	INFO("Heat Range = %u", calib.res_heat_range);
-	INFO("Heat Val = %d", calib.res_heat_val);
-	INFO("SW Error = %d", calib.range_sw_err);
+	// INFO("chipID = %u", chipID);
+	// INFO("T1 = %u", calib.par_t1);
+	// INFO("T2 = %d", calib.par_t2);
+	// INFO("T3 = %d", calib.par_t3);
+	// INFO("P1 = %u", calib.par_p1);
+	// INFO("P2 = %d", calib.par_p2);
+	// INFO("P3 = %d", calib.par_p3);
+	// INFO("P4 = %d", calib.par_p4);
+	// INFO("P5 = %d", calib.par_p5);
+	// INFO("P6 = %d", calib.par_p6);
+	// INFO("P7 = %d", calib.par_p7);
+	// INFO("P8 = %d", calib.par_p8);
+	// INFO("P9 = %d", calib.par_p9);
+	// INFO("P10 = %u", calib.par_p10);
+	// INFO("H1 = %u", calib.par_h1);
+	// INFO("H2 = %u", calib.par_h2);
+	// INFO("H3 = %d", calib.par_h3);
+	// INFO("H4 = %d", calib.par_h4);
+	// INFO("H5 = %d", calib.par_h5);
+	// INFO("H6 = %u", calib.par_h6);
+	// INFO("H7 = %d", calib.par_h7);
+	// INFO("G1 = %d", calib.par_gh1);
+	// INFO("G2 = %d", calib.par_gh2);
+	// INFO("G3 = %d", calib.par_gh3);
+	// INFO("G1 = %d", calib.par_gh1);
+	// INFO("G2 = %d", calib.par_gh2);
+	// INFO("G3 = %d", calib.par_gh3);
+	// INFO("Heat Range = %u", calib.res_heat_range);
+	// INFO("Heat Val = %d", calib.res_heat_val);
+	// INFO("SW Error = %d", calib.range_sw_err);
 
 	if (!setIIRFilterSize(BME68X_FILTER_SIZE_3)) WARN("setIIRFilterSize failed");
 	if (!setODR(BME68X_ODR_NONE)) WARN("setODR failed");
@@ -152,12 +152,9 @@ bool BME680::setODR(uint8_t odr) {
 }
 
 bool BME680::performReading() {
-	// return endReading();
-	const auto end_time = beginReading();
-	INFO("start = %lu, finish = %lu", millis(), end_time);
-
-	furi_delay_ms(end_time - millis() + 10);
-
+	// const auto end_time = beginReading();
+	// INFO("start = %lu, finish = %lu", millis(), end_time);
+	// furi_delay_ms(end_time - millis() + 10);
 	return endReading();
 }
 
@@ -166,7 +163,7 @@ uint32_t BME680::beginReading() {
 		int8_t result = setOpMode(BME68X_FORCED_MODE);
 
 		if (result != BME68X_OK) {
-			INFO("beginReading failed: %d", result);
+			WARN("beginReading failed: %d", result);
 			return 0;
 		}
 
@@ -191,14 +188,12 @@ bool BME680::endReading() {
 
 	if (remaining_millis > 0) {
 		// Delay until the measurement is ready
-		INFO("Delaying %lu", static_cast<uint32_t>(remaining_millis) * 2);
+		// INFO("Delaying %lu", static_cast<uint32_t>(remaining_millis) * 2);
 		furi_delay_ms(static_cast<uint32_t>(remaining_millis) * 2);
 	}
 
 	measureStart = 0; // Allow new measurement to begin
 	measurePeriod = 0;
-
-	INFO("t_fine = %f", calib.t_fine);
 
 	bme68x_data data;
 	uint8_t n_fields;
@@ -287,18 +282,18 @@ int8_t BME680::readFieldData(uint8_t index, bme68x_data &data) {
 	uint16_t adc_gas_res_high;
 	uint8_t tries = 5;
 
-	INFO("readFieldData(%u)", index);
+	TRACE("readFieldData(%u)", index);
 
 	while (tries != 0 && result == BME68X_OK) {
-		INFO("reg_addr = 0x%02x", static_cast<uint8_t>(BME68X_REG_FIELD0 + (index * BME68X_LEN_FIELD_OFFSET)));
+		TRACE("reg_addr = 0x%02x", static_cast<uint8_t>(BME68X_REG_FIELD0 + (index * BME68X_LEN_FIELD_OFFSET)));
 		result = getRegs(static_cast<uint8_t>(BME68X_REG_FIELD0 + (index * BME68X_LEN_FIELD_OFFSET)), buff, BME68X_LEN_FIELD);
-		INFO("buff = {0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x}", buff[0], buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff[14], buff[15], buff[16]);
+		TRACE("buff = {0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x}", buff[0], buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff[14], buff[15], buff[16]);
 
 		data.status = buff[0] & BME68X_NEW_DATA_MSK;
 		data.gas_index = buff[0] & BME68X_GAS_INDEX_MSK;
 		data.meas_index = buff[1];
 
-		INFO("result = %d, status = %u", result, data.status);
+		TRACE("result = %d, status = %u", result, data.status);
 
 		/* read the raw data from the sensor */
 		adc_pres = (uint32_t) (((uint32_t) buff[2] * 4096) | ((uint32_t) buff[3] * 16) | ((uint32_t) buff[4] / 16));
@@ -468,19 +463,9 @@ int8_t BME680::setRegs(const uint8_t *reg_addrs, const uint8_t *reg_data, uint8_
 			}
 
 			if (result == BME68X_OK) {
-				// interfaceResult = write(tmp_buff[0], &tmp_buff[1], (2 * len) - 1->intf_ptr);
-				// interfaceResult = write(&tmp_buff[0], 1);
-				// if (!interfaceResult) {
-				// 	result = BME68X_E_COM_FAIL;
-				// } else {
-				// 	interfaceResult = write(&tmp_buff[1], (2 * len) - 1);
-				// 	if (!interfaceResult)
-				// 		result = BME68X_E_COM_FAIL;
-				// }
-
 				interfaceResult = write(tmp_buff, 2 * len);
 				if (!interfaceResult) {
-					INFO("bme680.cpp:%d: write failed", __LINE__);
+					WARN("bme680.cpp:%d: write failed", __LINE__);
 					result = BME68X_E_COM_FAIL;
 				}
 			}
@@ -845,7 +830,7 @@ int8_t BME680::setConf(const bme68x_heatr_conf &conf, uint8_t op_mode, uint8_t &
 	if (result == BME68X_OK)
 		result = setRegs(gw_reg_addr, gw_reg_data, write_len);
 
-	INFO("setConf -> %d", result);
+	// INFO("setConf -> %d", result);
 	return result;
 }
 

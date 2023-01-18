@@ -8,6 +8,11 @@
 #define BME680_ADDRESS 0x77
 
 struct BME680: private I2C, bme68x_dev {
+	float temperature = 0.f;
+	float pressure = 0.f;
+	float humidity = 0.f;
+	uint32_t gasResistance = 0;
+
 	using I2C::I2C;
 	BME680();
 
@@ -36,10 +41,6 @@ struct BME680: private I2C, bme68x_dev {
 	int8_t readFieldData(uint8_t index, bme68x_data &data);
 
 	private:
-		float temperature = 0.f;
-		float pressure = 0.f;
-		float humidity = 0.f;
-		uint32_t gasResistance = 0;
 		uint32_t measureStart = 0;
 		uint16_t measurePeriod = 0;
 

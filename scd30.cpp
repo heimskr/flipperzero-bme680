@@ -138,15 +138,13 @@ extern "C" int32_t scd30_main() {
 						}
 
 						if (ready) {
-							// bme68x_data data;
-							// uint8_t n_fields;
-							// INFO("Result: %d", bme->getData(BME68X_FORCED_MODE, &data, n_fields));
-							// INFO("temperature: [%f]", data.temperature);
-							// INFO("pressure: [%f]", data.pressure);
-							// INFO("pressure: [%f]", data.pressure);
-							// INFO("humidity: [%f]", data.humidity);
-							// INFO("gasResistance: [%f]", data.gasResistance);
-							INFO("Temperature: [%f]", bme->readTemperature());
+							if (bme->performReading()) {
+								INFO("temperature: [%f]", bme->temperature);
+								INFO("pressure: [%f]", bme->pressure);
+								INFO("humidity: [%f]", bme->humidity);
+								INFO("gas resistance: [%lu]", bme->gasResistance);
+							} else
+								ERROR("Reading failed");
 						}
 					}
 				}

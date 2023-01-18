@@ -88,8 +88,6 @@ void I2C::stopInterrupts() {
 	furi_hal_gpio_init(&SDA, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
 }
 
-// #define HACK_ADDR address <<= 1 // ???
-// #define HACK_ADDR address >>= 1
 #define HACK_ADDR (address << 1)
 
 bool I2C::write(const uint8_t *data, uint8_t size) {
