@@ -70,4 +70,9 @@ struct BME680: private I2C, bme68x_dev {
 		int8_t setHeaterConf(uint8_t op_mode, struct bme68x_heatr_conf &conf);
 		int8_t setConf(const bme68x_heatr_conf &conf, uint8_t op_mode, uint8_t &nb_conv);
 		uint8_t calculateHeaterDurationShared(uint16_t dur);
+
+		int8_t init();
+		int8_t softReset();
+		int8_t readVariantID();
+		int8_t getCalibData();
 };

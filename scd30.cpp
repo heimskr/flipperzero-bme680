@@ -123,7 +123,7 @@ extern "C" int32_t scd30_main() {
 					// INFO("Key: [%d]", static_cast<int>(message.event.key));
 					if (message.event.key == InputKeyBack) {
 						run = false;
-					} else if (message.event.key == InputKeyDown) {
+					} else if (message.event.key == InputKeyOk) {
 						if (bme == nullptr)
 							bme = new BME680;
 
@@ -137,8 +137,17 @@ extern "C" int32_t scd30_main() {
 								ready = true;
 						}
 
-						if (ready)
+						if (ready) {
+							// bme68x_data data;
+							// uint8_t n_fields;
+							// INFO("Result: %d", bme->getData(BME68X_FORCED_MODE, &data, n_fields));
+							// INFO("temperature: [%f]", data.temperature);
+							// INFO("pressure: [%f]", data.pressure);
+							// INFO("pressure: [%f]", data.pressure);
+							// INFO("humidity: [%f]", data.humidity);
+							// INFO("gasResistance: [%f]", data.gasResistance);
 							INFO("Temperature: [%f]", bme->readTemperature());
+						}
 					}
 				}
 			} else {

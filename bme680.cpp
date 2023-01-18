@@ -6,21 +6,62 @@
 BME680::BME680(): I2C(BME680_ADDRESS) {}
 
 bool BME680::begin() {
-	setIIRFilterSize(BME68X_FILTER_SIZE_3);
-	setODR(BME68X_ODR_NONE);
-	setHumidityOversampling(BME68X_OS_2X);
-	setPressureOversampling(BME68X_OS_4X);
-	setTemperatureOversampling(BME68X_OS_8X);
-	// setGasHeater(320, 150); // 320*C for 150 ms
+	chipID = address;
 
-	const auto result = setOpMode(BME68X_FORCED_MODE);
+	ambTemp = 25;
+
+	int8_t result = init();
+
+	if (result != BME68X_OK)
+		return false;
+
+	INFO("chipID = %u", chipID);
+	INFO("T1 = %u", calib.par_t1);
+	INFO("T2 = %d", calib.par_t2);
+	INFO("T3 = %d", calib.par_t3);
+	INFO("P1 = %u", calib.par_p1);
+	INFO("P2 = %d", calib.par_p2);
+	INFO("P3 = %d", calib.par_p3);
+	INFO("P4 = %d", calib.par_p4);
+	INFO("P5 = %d", calib.par_p5);
+	INFO("P6 = %d", calib.par_p6);
+	INFO("P7 = %d", calib.par_p7);
+	INFO("P8 = %d", calib.par_p8);
+	INFO("P9 = %d", calib.par_p9);
+	INFO("P10 = %u", calib.par_p10);
+	INFO("H1 = %u", calib.par_h1);
+	INFO("H2 = %u", calib.par_h2);
+	INFO("H3 = %d", calib.par_h3);
+	INFO("H4 = %d", calib.par_h4);
+	INFO("H5 = %d", calib.par_h5);
+	INFO("H6 = %u", calib.par_h6);
+	INFO("H7 = %d", calib.par_h7);
+	INFO("G1 = %d", calib.par_gh1);
+	INFO("G2 = %d", calib.par_gh2);
+	INFO("G3 = %d", calib.par_gh3);
+	INFO("G1 = %d", calib.par_gh1);
+	INFO("G2 = %d", calib.par_gh2);
+	INFO("G3 = %d", calib.par_gh3);
+	INFO("Heat Range = %u", calib.res_heat_range);
+	INFO("Heat Val = %d", calib.res_heat_val);
+	INFO("SW Error = %d", calib.range_sw_err);
+
+	if (!setIIRFilterSize(BME68X_FILTER_SIZE_3)) WARN("setIIRFilterSize failed");
+	if (!setODR(BME68X_ODR_NONE)) WARN("setODR failed");
+	if (!setHumidityOversampling(BME68X_OS_2X)) WARN("setHumidityOversampling failed");
+	if (!setPressureOversampling(BME68X_OS_4X)) WARN("setPressureOversampling failed");
+	if (!setTemperatureOversampling(BME68X_OS_8X)) WARN("setTemperatureOversampling failed");
+	// 320*C for 150 ms
+	if (!setGasHeater(320, 150)) WARN("setGasHeater failed");
+
+	result = setOpMode(BME68X_FORCED_MODE);
 	if (result != BME68X_OK)
 		ERROR("begin result: %d", result);
 
 	return result == BME68X_OK;
 }
 
-float BME680::readTemperature(void) {
+float BME680::readTemperature() {
 	const bool performed = performReading();
 	if (!performed)
 		ERROR("readTemperature failed");
@@ -28,7 +69,7 @@ float BME680::readTemperature(void) {
 	return temperature;
 }
 
-float BME680::readPressure(void) {
+float BME680::readPressure() {
 	const bool performed = performReading();
 	if (!performed)
 		ERROR("readPressure failed");
@@ -36,7 +77,7 @@ float BME680::readPressure(void) {
 	return pressure;
 }
 
-float BME680::readHumidity(void) {
+float BME680::readHumidity() {
 	const bool performed = performReading();
 	if (!performed)
 		ERROR("readHumidity failed");
@@ -44,7 +85,7 @@ float BME680::readHumidity(void) {
 	return humidity;
 }
 
-uint32_t BME680::readGas(void) {
+uint32_t BME680::readGas() {
 	const bool performed = performReading();
 	if (!performed)
 		ERROR("readGas failed");
@@ -111,6 +152,12 @@ bool BME680::setODR(uint8_t odr) {
 }
 
 bool BME680::performReading() {
+	// return endReading();
+	const auto end_time = beginReading();
+	INFO("start = %lu, finish = %lu", millis(), end_time);
+
+	furi_delay_ms(end_time - millis() + 10);
+
 	return endReading();
 }
 
@@ -136,7 +183,7 @@ bool BME680::endReading() {
 	uint32_t meas_end = beginReading();
 
 	if (meas_end == 0) {
-		INFO("meas_end == 0");
+		WARN("meas_end == 0");
 		return false;
 	}
 
@@ -151,13 +198,15 @@ bool BME680::endReading() {
 	measureStart = 0; // Allow new measurement to begin
 	measurePeriod = 0;
 
+	INFO("t_fine = %f", calib.t_fine);
+
 	bme68x_data data;
 	uint8_t n_fields;
 
 	int8_t result = getData(BME68X_FORCED_MODE, &data, n_fields);
 	if (result != BME68X_OK) {
 	// if (result < 0) {
-		WARN("%d: result = %d", __LINE__, result);
+		WARN("bme680.cpp:%d: result = %d, n_fields = %u", __LINE__, result, n_fields);
 		return false;
 	}
 
@@ -238,12 +287,18 @@ int8_t BME680::readFieldData(uint8_t index, bme68x_data &data) {
 	uint16_t adc_gas_res_high;
 	uint8_t tries = 5;
 
+	INFO("readFieldData(%u)", index);
+
 	while (tries != 0 && result == BME68X_OK) {
-		result = getRegs(static_cast<uint8_t>(BME68X_REG_FIELD0 + (index * BME68X_LEN_FIELD_OFFSET)), buff, static_cast<uint16_t>(BME68X_LEN_FIELD));
+		INFO("reg_addr = 0x%02x", static_cast<uint8_t>(BME68X_REG_FIELD0 + (index * BME68X_LEN_FIELD_OFFSET)));
+		result = getRegs(static_cast<uint8_t>(BME68X_REG_FIELD0 + (index * BME68X_LEN_FIELD_OFFSET)), buff, BME68X_LEN_FIELD);
+		INFO("buff = {0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x}", buff[0], buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff[14], buff[15], buff[16]);
 
 		data.status = buff[0] & BME68X_NEW_DATA_MSK;
 		data.gas_index = buff[0] & BME68X_GAS_INDEX_MSK;
 		data.meas_index = buff[1];
+
+		INFO("result = %d, status = %u", result, data.status);
 
 		/* read the raw data from the sensor */
 		adc_pres = (uint32_t) (((uint32_t) buff[2] * 4096) | ((uint32_t) buff[3] * 16) | ((uint32_t) buff[4] / 16));
@@ -286,6 +341,8 @@ int8_t BME680::readFieldData(uint8_t index, bme68x_data &data) {
 
 		if (result == BME68X_OK)
 			furi_delay_us(BME68X_PERIOD_POLL);
+		else
+			WARN("bme680.cpp:%d: result = %d", __LINE__, result);
 
 		--tries;
 	}
@@ -614,7 +671,6 @@ int8_t BME680::readAllFieldData(bme68x_data * const data[]) {
 		result = BME68X_E_NULL_PTR;
 
 	if (result == BME68X_OK)
-		// result = bme68x_get_regs(BME68X_REG_FIELD0, buff, (uint32_t) BME68X_LEN_FIELD * 3, dev);
 		result = getRegs(BME68X_REG_FIELD0, buff, (uint32_t) BME68X_LEN_FIELD * 3);
 
 	if (result == BME68X_OK)
@@ -783,6 +839,7 @@ int8_t BME680::setConf(const bme68x_heatr_conf &conf, uint8_t op_mode, uint8_t &
 	if (result == BME68X_OK)
 		result = setRegs(gw_reg_addr, gw_reg_data, write_len);
 
+	INFO("setConf -> %d", result);
 	return result;
 }
 
@@ -805,4 +862,102 @@ uint8_t BME680::calculateHeaterDurationShared(uint16_t dur) {
 	}
 
 	return heatdurval;
+}
+
+int8_t BME680::init() {
+	int8_t result = softReset();
+
+	if (result == BME68X_OK) {
+		result = getRegs(BME68X_REG_CHIP_ID, &chipID, 1);
+		if (result == BME68X_OK) {
+			if (chipID == BME68X_CHIP_ID) {
+				result = readVariantID();
+
+				if (result == BME68X_OK)
+					result = getCalibData();
+			} else
+				result = BME68X_E_DEV_NOT_FOUND;
+		}
+	}
+
+	return result;
+}
+
+int8_t BME680::softReset() {
+	uint8_t reg_addr = BME68X_REG_SOFT_RESET;
+
+	// 0xb6 is the soft reset command
+	uint8_t soft_rst_cmd = BME68X_SOFT_RESET_CMD;
+
+	// Reset the device
+	int8_t result = setRegs(&reg_addr, &soft_rst_cmd, 1);
+
+	// Wait for 10ms
+	furi_delay_us(BME68X_PERIOD_RESET);
+
+	return result;
+}
+
+int8_t BME680::readVariantID() {
+	uint8_t reg_data = 0;
+
+	// Read variant ID information register
+	int8_t result = getRegs(BME68X_REG_VARIANT_ID, &reg_data, 1);
+
+	if (result == BME68X_OK)
+		variantID = reg_data;
+
+	return result;
+}
+
+int8_t BME680::getCalibData() {
+	uint8_t coeff_array[BME68X_LEN_COEFF_ALL];
+
+	int8_t result = getRegs(BME68X_REG_COEFF1, coeff_array, BME68X_LEN_COEFF1);
+
+	if (result == BME68X_OK)
+		result = getRegs(BME68X_REG_COEFF2, &coeff_array[BME68X_LEN_COEFF1], BME68X_LEN_COEFF2);
+
+	if (result == BME68X_OK)
+		result = getRegs(BME68X_REG_COEFF3, &coeff_array[BME68X_LEN_COEFF1 + BME68X_LEN_COEFF2], BME68X_LEN_COEFF3);
+
+	if (result == BME68X_OK) {
+		/* Temperature related coefficients */
+		calib.par_t1 = (uint16_t) (BME68X_CONCAT_BYTES(coeff_array[BME68X_IDX_T1_MSB], coeff_array[BME68X_IDX_T1_LSB]));
+		calib.par_t2 = (int16_t) (BME68X_CONCAT_BYTES(coeff_array[BME68X_IDX_T2_MSB], coeff_array[BME68X_IDX_T2_LSB]));
+		calib.par_t3 = (int8_t) (coeff_array[BME68X_IDX_T3]);
+
+		/* Pressure related coefficients */
+		calib.par_p1  = (uint16_t) (BME68X_CONCAT_BYTES(coeff_array[BME68X_IDX_P1_MSB], coeff_array[BME68X_IDX_P1_LSB]));
+		calib.par_p2  = (int16_t) (BME68X_CONCAT_BYTES(coeff_array[BME68X_IDX_P2_MSB], coeff_array[BME68X_IDX_P2_LSB]));
+		calib.par_p3  = (int8_t) coeff_array[BME68X_IDX_P3];
+		calib.par_p4  = (int16_t) (BME68X_CONCAT_BYTES(coeff_array[BME68X_IDX_P4_MSB], coeff_array[BME68X_IDX_P4_LSB]));
+		calib.par_p5  = (int16_t) (BME68X_CONCAT_BYTES(coeff_array[BME68X_IDX_P5_MSB], coeff_array[BME68X_IDX_P5_LSB]));
+		calib.par_p6  = (int8_t) (coeff_array[BME68X_IDX_P6]);
+		calib.par_p7  = (int8_t) (coeff_array[BME68X_IDX_P7]);
+		calib.par_p8  = (int16_t) (BME68X_CONCAT_BYTES(coeff_array[BME68X_IDX_P8_MSB], coeff_array[BME68X_IDX_P8_LSB]));
+		calib.par_p9  = (int16_t) (BME68X_CONCAT_BYTES(coeff_array[BME68X_IDX_P9_MSB], coeff_array[BME68X_IDX_P9_LSB]));
+		calib.par_p10 = (uint8_t) (coeff_array[BME68X_IDX_P10]);
+
+		/* Humidity related coefficients */
+		calib.par_h1 = (uint16_t) (((uint16_t) coeff_array[BME68X_IDX_H1_MSB] << 4) | (coeff_array[BME68X_IDX_H1_LSB] & BME68X_BIT_H1_DATA_MSK));
+		calib.par_h2 = (uint16_t) (((uint16_t) coeff_array[BME68X_IDX_H2_MSB] << 4) | ((coeff_array[BME68X_IDX_H2_LSB]) >> 4));
+		calib.par_h3 = (int8_t) coeff_array[BME68X_IDX_H3];
+		calib.par_h4 = (int8_t) coeff_array[BME68X_IDX_H4];
+		calib.par_h5 = (int8_t) coeff_array[BME68X_IDX_H5];
+		calib.par_h6 = (uint8_t) coeff_array[BME68X_IDX_H6];
+		calib.par_h7 = (int8_t) coeff_array[BME68X_IDX_H7];
+
+		/* Gas heater related coefficients */
+		calib.par_gh1 = (int8_t) coeff_array[BME68X_IDX_GH1];
+		calib.par_gh2 = (int16_t) (BME68X_CONCAT_BYTES(coeff_array[BME68X_IDX_GH2_MSB], coeff_array[BME68X_IDX_GH2_LSB]));
+		calib.par_gh3 = (int8_t) coeff_array[BME68X_IDX_GH3];
+
+		/* Other coefficients */
+		calib.res_heat_range = ((coeff_array[BME68X_IDX_RES_HEAT_RANGE] & BME68X_RHRANGE_MSK) / 16);
+		calib.res_heat_val   = (int8_t) coeff_array[BME68X_IDX_RES_HEAT_VAL];
+		calib.range_sw_err   = ((int8_t) (coeff_array[BME68X_IDX_RANGE_SW_ERR] & BME68X_RSERROR_MSK)) / 16;
+	}
+
+	return result;
 }

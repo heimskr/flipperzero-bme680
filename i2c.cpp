@@ -111,12 +111,15 @@ bool I2C::read(uint8_t *buffer, uint8_t size) {
 bool I2C::writeThenRead(const uint8_t *tx_data, uint8_t tx_size, uint8_t *rx_data, uint8_t rx_size) {
 	acquire();
 	// const bool success = furi_hal_i2c_trx(I2C_BUS, HACK_ADDR, tx_data, tx_size, rx_data, rx_size, I2C_TIMEOUT);
-	INFO("tx_data = {0x%x}, address = 0x%x", tx_data[0], address);
+	TRACE("tx_data = {0x%x}, address = 0x%x", tx_data[0], address);
 	bool success = furi_hal_i2c_tx(I2C_BUS, HACK_ADDR, tx_data, tx_size, I2C_TIMEOUT);
 	if (success) {
 		success = furi_hal_i2c_rx(I2C_BUS, HACK_ADDR, rx_data, rx_size, I2C_TIMEOUT);
 		if (!success)
 			ERROR("wtr: rx failed");
+		else
+			for (uint8_t i = 0; i < rx_size; ++i)
+				TRACE("rx_data[%u] = 0x%02x", i, rx_data[i]);
 	} else
 		ERROR("wtr: tx failed");
 	release();
