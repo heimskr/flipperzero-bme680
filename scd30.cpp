@@ -105,7 +105,8 @@ extern "C" int32_t scd30_main() {
 				default:                        ERROR(errs[(error = ERR_QUEUE_UNK)]);       goto bail;
 			}
 		} else {
-			if (!(state = reinterpret_cast<State *>(acquire_mutex_block(&mutex)))) {
+			// if (!(state = reinterpret_cast<State *>(acquire_mutex_block(&mutex)))) {
+			if (!acquire_mutex_block(&mutex)) {
 				ERROR(errs[(error = ERR_MUTEX_BLOCK)]);
 				goto bail;
 			}
@@ -123,7 +124,7 @@ extern "C" int32_t scd30_main() {
 
 			view_port_update(viewport);
 
-			if (!release_mutex(&mutex, state)) {
+			if (!release_mutex(&mutex, state.get())) {
 				ERROR(errs[(error = ERR_MUTEX_RELEASE)]);
 				goto bail;
 			}
@@ -156,10 +157,7 @@ bail:
 	// 	state->text = nullptr;
 	// }
 
-	if (state) {
-		delete state;
-		state = nullptr;
-	}
+	state.reset();
 
 	furi_record_close("gui");
 

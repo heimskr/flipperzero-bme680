@@ -4,7 +4,7 @@
 
 int I2C::count = 0;
 
-I2C::I2C() {
+I2C::I2C(uint8_t address_): address(address_) {
 	furi_assert(++count == 1);
 	clearBuffers();
 }
@@ -85,4 +85,64 @@ void I2C::stopInterrupts() {
 	// Reset GPIO pins to default state
 	furi_hal_gpio_init(&SCL, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
 	furi_hal_gpio_init(&SDA, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
+}
+
+bool I2C::write(const uint8_t *data, uint8_t size) {
+	acquire();
+	// address <<= 1; // ???
+	const bool success = furi_hal_i2c_tx(I2C_BUS, address, data, size, I2C_TIMEOUT);
+	release();
+	return success;
+}
+
+bool I2C::read(uint8_t *buffer, uint8_t size) {
+	acquire();
+	// address <<= 1; // ???
+	const bool success = furi_hal_i2c_rx(I2C_BUS, address, buffer, size, I2C_TIMEOUT);
+	release();
+	return success;
+}
+
+bool I2C::writeThenRead(const uint8_t *tx_data, uint8_t tx_size, uint8_t *rx_data, uint8_t rx_size) {
+	acquire();
+	// address <<= 1; // ???
+	const bool success = furi_hal_i2c_trx(I2C_BUS, address, tx_data, tx_size, rx_data, rx_size, I2C_TIMEOUT);
+	release();
+	return success;
+}
+
+bool I2C::readReg8(uint8_t reg_addr, uint8_t &out) {
+	acquire();
+	const bool success = furi_hal_i2c_read_reg_8(I2C_BUS, address, reg_addr, &out, I2C_TIMEOUT);
+	release();
+	return success;
+}
+
+bool I2C::readReg16(uint8_t reg_addr, uint16_t &out) {
+	acquire();
+	const bool success = furi_hal_i2c_read_reg_16(I2C_BUS, address, reg_addr, &out, I2C_TIMEOUT);
+	release();
+	return success;
+}
+
+bool I2C::writeReg8(uint8_t reg_addr, uint8_t data) {
+	acquire();
+	const bool success = furi_hal_i2c_write_reg_8(I2C_BUS, address, reg_addr, data, I2C_TIMEOUT);
+	release();
+	return success;
+}
+
+bool I2C::writeReg16(uint8_t reg_addr, uint16_t data) {
+	acquire();
+	const bool success = furi_hal_i2c_write_reg_16(I2C_BUS, address, reg_addr, data, I2C_TIMEOUT);
+	release();
+	return success;
+}
+
+void I2C::acquire() {
+	furi_hal_i2c_acquire(I2C_BUS);
+}
+
+void I2C::release() {
+	furi_hal_i2c_release(I2C_BUS);
 }
