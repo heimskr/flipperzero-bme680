@@ -9,7 +9,7 @@
 #define SDA gpio_ext_pc1
 
 #define I2C_BUS &furi_hal_i2c_handle_external
-#define I2C_TIMEOUT 3
+#define I2C_TIMEOUT 10
 
 #define MAX_MESSAGE_SIZE 128
 #define MAX_RECORDS 128

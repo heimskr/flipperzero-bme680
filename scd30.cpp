@@ -119,26 +119,27 @@ extern "C" int32_t scd30_main() {
 			if (message.id == EventID::Tick) {
 				INFO("Tick.");
 			} else if (message.id == EventID::Key) {
-				INFO("Key: [%d]", static_cast<int>(message.event.key));
+				if (message.event.type == InputTypeRelease) {
+					// INFO("Key: [%d]", static_cast<int>(message.event.key));
+					if (message.event.key == InputKeyBack) {
+						run = false;
+					} else if (message.event.key == InputKeyDown) {
+						if (bme == nullptr)
+							bme = new BME680;
 
-				if (message.event.key == InputKeyBack) {
-					run = false;
-				} else if (message.event.key == InputKeyDown) {
-					if (bme == nullptr)
-						bme = new BME680;
+						static bool begun = false;
+						static bool ready = false;
+						if (!begun) {
+							begun = true;
+							if (!bme->begin())
+								ERROR("bme.begin() returned false");
+							else
+								ready = true;
+						}
 
-					static bool begun = false;
-					static bool ready = false;
-					if (!begun) {
-						begun = true;
-						if (!bme->begin())
-							ERROR("bme.begin() returned false");
-						else
-							ready = true;
+						if (ready)
+							INFO("Temperature: [%f]", bme->readTemperature());
 					}
-
-					if (ready)
-						INFO("Temperature: [%f]", bme->readTemperature());
 				}
 			} else {
 				WARN("Unknown message ID [%d]", static_cast<int>(message.id));

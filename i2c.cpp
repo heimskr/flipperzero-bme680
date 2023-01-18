@@ -1,6 +1,7 @@
 // Credit: https://github.com/NaejEL/flipperzero-i2ctools
 
 #include "i2c.h"
+#include "scd30_logging.h"
 
 int I2C::count = 0;
 
@@ -87,54 +88,63 @@ void I2C::stopInterrupts() {
 	furi_hal_gpio_init(&SDA, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
 }
 
+// #define HACK_ADDR address <<= 1 // ???
+// #define HACK_ADDR address >>= 1
+#define HACK_ADDR address << 1
+
 bool I2C::write(const uint8_t *data, uint8_t size) {
 	acquire();
-	// address <<= 1; // ???
-	const bool success = furi_hal_i2c_tx(I2C_BUS, address, data, size, I2C_TIMEOUT);
+	const bool success = furi_hal_i2c_tx(I2C_BUS, HACK_ADDR, data, size, I2C_TIMEOUT);
 	release();
 	return success;
 }
 
 bool I2C::read(uint8_t *buffer, uint8_t size) {
 	acquire();
-	// address <<= 1; // ???
-	const bool success = furi_hal_i2c_rx(I2C_BUS, address, buffer, size, I2C_TIMEOUT);
+	const bool success = furi_hal_i2c_rx(I2C_BUS, HACK_ADDR, buffer, size, I2C_TIMEOUT);
 	release();
 	return success;
 }
 
 bool I2C::writeThenRead(const uint8_t *tx_data, uint8_t tx_size, uint8_t *rx_data, uint8_t rx_size) {
 	acquire();
-	// address <<= 1; // ???
-	const bool success = furi_hal_i2c_trx(I2C_BUS, address, tx_data, tx_size, rx_data, rx_size, I2C_TIMEOUT);
+	// const bool success = furi_hal_i2c_trx(I2C_BUS, HACK_ADDR, tx_data, tx_size, rx_data, rx_size, I2C_TIMEOUT);
+	INFO("tx_data = {0x%x}, address = 0x%x", tx_data[0], address);
+	bool success = furi_hal_i2c_tx(I2C_BUS, HACK_ADDR, tx_data, tx_size, I2C_TIMEOUT);
+	if (success) {
+		success = furi_hal_i2c_rx(I2C_BUS, HACK_ADDR, rx_data, rx_size, I2C_TIMEOUT);
+		if (!success)
+			ERROR("rx failed");
+	} else
+		ERROR("tx failed");
 	release();
 	return success;
 }
 
 bool I2C::readReg8(uint8_t reg_addr, uint8_t &out) {
 	acquire();
-	const bool success = furi_hal_i2c_read_reg_8(I2C_BUS, address, reg_addr, &out, I2C_TIMEOUT);
+	const bool success = furi_hal_i2c_read_reg_8(I2C_BUS, HACK_ADDR, reg_addr, &out, I2C_TIMEOUT);
 	release();
 	return success;
 }
 
 bool I2C::readReg16(uint8_t reg_addr, uint16_t &out) {
 	acquire();
-	const bool success = furi_hal_i2c_read_reg_16(I2C_BUS, address, reg_addr, &out, I2C_TIMEOUT);
+	const bool success = furi_hal_i2c_read_reg_16(I2C_BUS, HACK_ADDR, reg_addr, &out, I2C_TIMEOUT);
 	release();
 	return success;
 }
 
 bool I2C::writeReg8(uint8_t reg_addr, uint8_t data) {
 	acquire();
-	const bool success = furi_hal_i2c_write_reg_8(I2C_BUS, address, reg_addr, data, I2C_TIMEOUT);
+	const bool success = furi_hal_i2c_write_reg_8(I2C_BUS, HACK_ADDR, reg_addr, data, I2C_TIMEOUT);
 	release();
 	return success;
 }
 
 bool I2C::writeReg16(uint8_t reg_addr, uint16_t data) {
 	acquire();
-	const bool success = furi_hal_i2c_write_reg_16(I2C_BUS, address, reg_addr, data, I2C_TIMEOUT);
+	const bool success = furi_hal_i2c_write_reg_16(I2C_BUS, HACK_ADDR, reg_addr, data, I2C_TIMEOUT);
 	release();
 	return success;
 }

@@ -150,7 +150,8 @@ bool BME680::endReading() {
 	uint8_t n_fields;
 
 	int8_t result = getData(BME68X_FORCED_MODE, &data, n_fields);
-	if (result != BME68X_OK) {
+	// if (result != BME68X_OK) {
+	if (result < 0) {
 		INFO("%d: result = %d", __LINE__, result);
 		return false;
 	}
@@ -381,8 +382,10 @@ int8_t BME680::setOpMode(uint8_t op_mode) {
 
 int8_t BME680::getRegs(uint8_t reg_addr, uint8_t *reg_data, uint8_t len) {
 	interfaceResult = writeThenRead(&reg_addr, 1, reg_data, len);
-	if (interfaceResult != 0)
+	if (!interfaceResult) {
+		ERROR("getRegs(0x%x) failed", reg_addr);
 		return BME68X_E_COM_FAIL;
+	}
 
 	return BME68X_OK;
 }
@@ -576,7 +579,7 @@ uint8_t BME680::calculateGasWait(uint16_t dur) {
 
 uint32_t BME680::millis() const {
 	const auto timer = furi_hal_cortex_timer_get(1000);
-	INFO("start = %lu, value = %lu -> %lu", timer.start, timer.value, timer.start / timer.value);
+	// INFO("start = %lu, value = %lu -> %lu", timer.start, timer.value, timer.start / timer.value);
 	return timer.start / timer.value;
 }
 
