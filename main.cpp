@@ -18,8 +18,6 @@
 constexpr static int FPS = 2;
 
 static void input_cb(InputEvent *event, FuriMessageQueue *queue) {
-	SCOPED_ENTER;
-
 	furi_assert(event);
 	furi_assert(queue);
 
@@ -83,8 +81,6 @@ release:
 }
 
 static void timer_cb(FuriMessageQueue *queue) {
-	SCOPED_ENTER;
-
 	furi_assert(queue);
 
 	EventMessage message {EventID::Tick};
@@ -92,8 +88,6 @@ static void timer_cb(FuriMessageQueue *queue) {
 }
 
 extern "C" int32_t bme680_main() {
-	SCOPED_ENTER;
-
 	err_t error = static_cast<err_t>(0);
 	Gui *gui = nullptr;
 	std::unique_ptr<State> state;
