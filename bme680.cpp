@@ -13,13 +13,17 @@ bool BME680::begin() {
 	setTemperatureOversampling(BME68X_OS_8X);
 	// setGasHeater(320, 150); // 320*C for 150 ms
 
-	return setOpMode(BME68X_FORCED_MODE) == BME68X_OK;
+	const auto result = setOpMode(BME68X_FORCED_MODE);
+	if (result != BME68X_OK)
+		ERROR("begin result: %d", result);
+
+	return result == BME68X_OK;
 }
 
 float BME680::readTemperature(void) {
 	const bool performed = performReading();
 	if (!performed)
-		INFO("readTemperature failed");
+		ERROR("readTemperature failed");
 
 	return temperature;
 }
@@ -27,7 +31,7 @@ float BME680::readTemperature(void) {
 float BME680::readPressure(void) {
 	const bool performed = performReading();
 	if (!performed)
-		INFO("readPressure failed");
+		ERROR("readPressure failed");
 
 	return pressure;
 }
@@ -35,7 +39,7 @@ float BME680::readPressure(void) {
 float BME680::readHumidity(void) {
 	const bool performed = performReading();
 	if (!performed)
-		INFO("readHumidity failed");
+		ERROR("readHumidity failed");
 
 	return humidity;
 }
@@ -43,7 +47,7 @@ float BME680::readHumidity(void) {
 uint32_t BME680::readGas(void) {
 	const bool performed = performReading();
 	if (!performed)
-		INFO("readGas failed");
+		ERROR("readGas failed");
 
 	return gasResistance;
 }
@@ -140,6 +144,7 @@ bool BME680::endReading() {
 
 	if (remaining_millis > 0) {
 		// Delay until the measurement is ready
+		INFO("Delaying %lu", static_cast<uint32_t>(remaining_millis) * 2);
 		furi_delay_ms(static_cast<uint32_t>(remaining_millis) * 2);
 	}
 
@@ -150,9 +155,9 @@ bool BME680::endReading() {
 	uint8_t n_fields;
 
 	int8_t result = getData(BME68X_FORCED_MODE, &data, n_fields);
-	// if (result != BME68X_OK) {
-	if (result < 0) {
-		INFO("%d: result = %d", __LINE__, result);
+	if (result != BME68X_OK) {
+	// if (result < 0) {
+		WARN("%d: result = %d", __LINE__, result);
 		return false;
 	}
 
@@ -408,11 +413,11 @@ int8_t BME680::setRegs(const uint8_t *reg_addrs, const uint8_t *reg_data, uint8_
 			if (result == BME68X_OK) {
 				// interfaceResult = write(tmp_buff[0], &tmp_buff[1], (2 * len) - 1->intf_ptr);
 				interfaceResult = write(&tmp_buff[0], 1);
-				if (interfaceResult != 0) {
+				if (!interfaceResult) {
 					result = BME68X_E_COM_FAIL;
 				} else {
 					interfaceResult = write(&tmp_buff[1], (2 * len) - 1);
-					if (interfaceResult != 0)
+					if (!interfaceResult)
 						result = BME68X_E_COM_FAIL;
 				}
 			}

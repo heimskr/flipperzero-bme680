@@ -571,34 +571,34 @@ enum bme68x_intf {
  */
 struct bme68x_data {
 	// Contains new_data, gasm_valid & heat_stab
-	uint8_t status;
+	uint8_t status = 0;
 
 	// The index of the heater profile used
-	uint8_t gas_index;
+	uint8_t gas_index = 0;
 
 	// Measurement index to track order
-	uint8_t meas_index;
+	uint8_t meas_index = 0;
 
 	// Heater resistance
-	uint8_t res_heat;
+	uint8_t res_heat = 0;
 
 	// Current DAC
-	uint8_t idac;
+	uint8_t idac = 0;
 
 	// Gas wait period
-	uint8_t gas_wait;
+	uint8_t gas_wait = 0;
 
 	// Temperature in degree celsius
-	float temperature;
+	float temperature = 0.f;
 
 	// Pressure in Pascal
-	float pressure;
+	float pressure = 0.f;
 
 	// Humidity in % relative humidity x1000
-	float humidity;
+	float humidity = 0.f;
 
 	// Gas resistance in Ohms
-	float gasResistance;
+	float gasResistance = 0.f;
 };
 
 /*

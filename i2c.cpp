@@ -95,6 +95,8 @@ void I2C::stopInterrupts() {
 bool I2C::write(const uint8_t *data, uint8_t size) {
 	acquire();
 	const bool success = furi_hal_i2c_tx(I2C_BUS, HACK_ADDR, data, size, I2C_TIMEOUT);
+	if (!success)
+		ERROR("write: tx failed");
 	release();
 	return success;
 }
@@ -114,9 +116,9 @@ bool I2C::writeThenRead(const uint8_t *tx_data, uint8_t tx_size, uint8_t *rx_dat
 	if (success) {
 		success = furi_hal_i2c_rx(I2C_BUS, HACK_ADDR, rx_data, rx_size, I2C_TIMEOUT);
 		if (!success)
-			ERROR("rx failed");
+			ERROR("wtr: rx failed");
 	} else
-		ERROR("tx failed");
+		ERROR("wtr: tx failed");
 	release();
 	return success;
 }
