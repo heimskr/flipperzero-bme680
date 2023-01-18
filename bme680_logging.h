@@ -21,6 +21,7 @@
 // The FlipperZero Settings->System menu allows you to set the logging level at RUN-time
 // This lets you limit it at COMPILE-time
 // #ifndef LOG_LEVEL
+#undef LOG_LEVEL
 #define LOG_LEVEL 5
 // #endif
 

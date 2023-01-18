@@ -8,12 +8,14 @@
 
 #include <memory>
 
-#define LOG_LEVEL 6
+#define LOG_LEVEL 5
 
 #include "bme680_logging.h"
 #include "err.h"
 #include "main.h"
 #include "bme680.h"
+
+constexpr static int FPS = 2;
 
 static void input_cb(InputEvent *event, FuriMessageQueue *queue) {
 	SCOPED_ENTER;
@@ -25,8 +27,36 @@ static void input_cb(InputEvent *event, FuriMessageQueue *queue) {
 	furi_message_queue_put(queue, &message, FuriWaitForever);
 }
 
-static void draw_cb(Canvas * const canvas, void *ctx) {
+static void draw_cb(Canvas *canvas, void *ctx) {
+	auto *state = reinterpret_cast<State *>(ctx);
+	if (!state)
+		return;
+	
+	canvas_clear(canvas);
+	canvas_set_color(canvas, ColorBlack);
 
+	if (state->hasRead) {
+		if (state->lastReadResult) {
+			char buffer[46];
+			auto &bme = *state->bme;
+			int row = 0;
+			auto print = [&](const char *label, float value) {
+				snprintf(buffer, sizeof(buffer), "%d.%.3d", int(value), int((value - int(value)) * 1'000));
+				canvas_set_font(canvas, FontPrimary);
+				canvas_draw_str_aligned(canvas, 0,  row   * 10, AlignLeft, AlignTop, label);
+				canvas_set_font(canvas, FontSecondary);
+				canvas_draw_str_aligned(canvas, 70, row++ * 10, AlignLeft, AlignTop, buffer);
+			};
+
+			print("Temperature:", bme.temperature);
+			print("Pressure:", bme.pressure);
+			print("Humidity:", bme.humidity);
+		} else {
+			canvas_draw_str_aligned(canvas, 0, 0, AlignLeft, AlignTop, "Reading failed.");
+		}
+	} else {
+		canvas_draw_str_aligned(canvas, 0, 0, AlignLeft, AlignTop, "Waiting for reading...");
+	}
 }
 
 static void timer_cb(FuriMessageQueue *queue) {
@@ -49,7 +79,7 @@ extern "C" int32_t bme680_main() {
 	FuriMessageQueue *queue = nullptr;
 	constexpr uint32_t  queue_size = 8;
 	EventMessage message;
-	BME680 *bme = nullptr;
+	FuriStatus status = FuriStatusOk;
 
 	if (!(queue = furi_message_queue_alloc(queue_size, sizeof(message)))) {
 		ERROR(errs[(error = ERR_MALLOC_QUEUE)]);
@@ -81,12 +111,24 @@ extern "C" int32_t bme680_main() {
 		goto bail;
 	}
 
+	if (!state->bme->begin()) {
+		ERROR("Couldn't begin BME680");
+		goto bail;
+	}
+
 	view_port_input_callback_set(viewport, input_cb, queue);
-	view_port_draw_callback_set(viewport, draw_cb, &mutex);
+	view_port_draw_callback_set(viewport, draw_cb, state.get());
 	gui_add_view_port(gui, viewport, GuiLayerFullscreen);
 
 	if (!(state->timer = furi_timer_alloc(timer_cb, FuriTimerTypePeriodic, queue))) {
 		ERROR(errs[(error = ERR_NO_TIMER)]);
+		goto bail;
+	}
+
+	state->timerFrequency = furi_kernel_get_tick_frequency();
+
+	if ((status = furi_timer_start(state->timer, state->timerFrequency / FPS)) != FuriStatusOk) {
+		ERROR("Couldn't start timer (%d)", status);
 		goto bail;
 	}
 
@@ -113,40 +155,20 @@ extern "C" int32_t bme680_main() {
 			}
 
 			if (message.id == EventID::Tick) {
-				INFO("Tick.");
+				state->readData();
 			} else if (message.id == EventID::Key) {
 				if (message.event.type == InputTypeRelease) {
-					// INFO("Key: [%d]", static_cast<int>(message.event.key));
 					if (message.event.key == InputKeyBack) {
 						run = false;
-					} else if (message.event.key == InputKeyOk) {
-						if (bme == nullptr)
-							bme = new BME680;
-
-						static bool begun = false;
-						static bool ready = false;
-						if (!begun) {
-							begun = true;
-							if (!bme->begin())
-								ERROR("bme.begin() returned false");
-							else
-								ready = true;
-						}
-
-						if (ready) {
-							if (bme->performReading()) {
-								INFO("temperature: [%f]", bme->temperature);
-								INFO("pressure: [%f]", bme->pressure);
-								INFO("humidity: [%f]", bme->humidity);
-								INFO("gas resistance: [%lu]", bme->gasResistance);
-							} else
-								ERROR("Reading failed");
-						}
+					} else if (message.event.key == InputKeyOk && state->readData()) {
+						INFO("temperature: [%f]", state->bme->temperature);
+						INFO("pressure: [%f]", state->bme->pressure);
+						INFO("humidity: [%f]", state->bme->humidity);
+						INFO("gas resistance: [%lu]", state->bme->gasResistance);
 					}
 				}
-			} else {
+			} else
 				WARN("Unknown message ID [%d]", static_cast<int>(message.id));
-			}
 
 			view_port_update(viewport);
 
@@ -185,8 +207,6 @@ bail:
 
 	state.reset();
 
-	delete bme;
-
 	furi_record_close("gui");
 
 	if (queue) {
@@ -205,10 +225,23 @@ bool State::init(FuriMessageQueue *queue) {
 		return false;
 	}
 
-	// if (!(i2c = new I2C)) {
-	// 	ERROR(errs[ERR_NO_I2C]);
-	// 	return false;
-	// }
+	if (!(bme = std::make_unique<BME680>())) {
+		ERROR(errs[ERR_NO_BME680]);
+		return false;
+	}
 
 	return true;
+}
+
+bool State::readData() {
+	hasRead = true;
+
+	if (bme == nullptr)
+		ERROR("bme is null");
+	else if (bme->performReading())
+		return lastReadResult = true;
+	else
+		ERROR("Reading failed");
+
+	return lastReadResult = false;
 }

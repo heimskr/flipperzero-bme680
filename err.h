@@ -24,6 +24,7 @@ static const char* const  appName = "bme680";  //$ Name used in log files
 	esPrial( 5, ERR_NO_MUTEX       , "Cannot create mutex") \
 	esPrial( 6, ERR_NO_GUI         , "Cannot open GUI") \
 	esPrial( 7, ERR_NO_TIMER       , "Cannot create timer") \
+	esPrial( 8, ERR_NO_BME680      , "Cannot create BME680") \
 \
 	esPrial(10, ERR_MUTEX_BLOCK    , "Mutex block failed") \
 	esPrial(11, ERR_MUTEX_RELEASE  , "Mutex release failed") \
