@@ -140,7 +140,7 @@ extern "C" int32_t bme680_main() {
 
 		if (status != FuriStatusOk) {
 			switch (status) {
-				case FuriStatusErrorTimeout:    DEBUG(errs[       DEBUG_QUEUE_TIMEOUT]);    break;
+				case FuriStatusErrorTimeout:    DEBUG(errs[DEBUG_QUEUE_TIMEOUT]);           break;
 				case FuriStatusError:           ERROR(errs[(error = ERR_QUEUE_RTOS)]);      goto bail;
 				case FuriStatusErrorResource:   ERROR(errs[(error = ERR_QUEUE_RESOURCE)]);  goto bail;
 				case FuriStatusErrorParameter:  ERROR(errs[(error = ERR_QUEUE_BADPRM)]);    goto bail;
@@ -157,16 +157,8 @@ extern "C" int32_t bme680_main() {
 			if (message.id == EventID::Tick) {
 				state->readData();
 			} else if (message.id == EventID::Key) {
-				if (message.event.type == InputTypeRelease) {
-					if (message.event.key == InputKeyBack) {
-						run = false;
-					} else if (message.event.key == InputKeyOk && state->readData()) {
-						INFO("temperature: [%f]", state->bme->temperature);
-						INFO("pressure: [%f]", state->bme->pressure);
-						INFO("humidity: [%f]", state->bme->humidity);
-						INFO("gas resistance: [%lu]", state->bme->gasResistance);
-					}
-				}
+				if (message.event.type == InputTypeRelease && message.event.key == InputKeyBack)
+					run = false;
 			} else
 				WARN("Unknown message ID [%d]", static_cast<int>(message.id));
 
@@ -199,11 +191,6 @@ bail:
 		delete_mutex(&mutex);
 		mutex.mutex = nullptr;
 	}
-
-	// if (state->text) {
-	// 	free(state->text);
-	// 	state->text = nullptr;
-	// }
 
 	state.reset();
 
