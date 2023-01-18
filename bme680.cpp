@@ -469,13 +469,19 @@ int8_t BME680::setRegs(const uint8_t *reg_addrs, const uint8_t *reg_data, uint8_
 
 			if (result == BME68X_OK) {
 				// interfaceResult = write(tmp_buff[0], &tmp_buff[1], (2 * len) - 1->intf_ptr);
-				interfaceResult = write(&tmp_buff[0], 1);
+				// interfaceResult = write(&tmp_buff[0], 1);
+				// if (!interfaceResult) {
+				// 	result = BME68X_E_COM_FAIL;
+				// } else {
+				// 	interfaceResult = write(&tmp_buff[1], (2 * len) - 1);
+				// 	if (!interfaceResult)
+				// 		result = BME68X_E_COM_FAIL;
+				// }
+
+				interfaceResult = write(tmp_buff, 2 * len);
 				if (!interfaceResult) {
+					INFO("bme680.cpp:%d: write failed", __LINE__);
 					result = BME68X_E_COM_FAIL;
-				} else {
-					interfaceResult = write(&tmp_buff[1], (2 * len) - 1);
-					if (!interfaceResult)
-						result = BME68X_E_COM_FAIL;
 				}
 			}
 		} else

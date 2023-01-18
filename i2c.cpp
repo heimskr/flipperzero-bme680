@@ -90,7 +90,7 @@ void I2C::stopInterrupts() {
 
 // #define HACK_ADDR address <<= 1 // ???
 // #define HACK_ADDR address >>= 1
-#define HACK_ADDR address << 1
+#define HACK_ADDR (address << 1)
 
 bool I2C::write(const uint8_t *data, uint8_t size) {
 	acquire();
