@@ -28,12 +28,17 @@ static void input_cb(InputEvent *event, FuriMessageQueue *queue) {
 }
 
 static void draw_cb(Canvas *canvas, void *ctx) {
-	auto *state = reinterpret_cast<State *>(ctx);
-	if (!state)
-		return;
+	auto *mutex = reinterpret_cast<ValueMutex *>(ctx);
+	State *state = nullptr;
+
+	if (!(state = reinterpret_cast<State *>(acquire_mutex_block(mutex)))) {
+		ERROR(errs[(ERR_MUTEX_BLOCK)]);
+		goto bail;
+	}
 	
 	canvas_clear(canvas);
 	canvas_set_color(canvas, ColorBlack);
+	canvas_set_font(canvas, FontPrimary);
 
 	if (state->hasRead) {
 		if (state->lastReadResult) {
@@ -56,6 +61,17 @@ static void draw_cb(Canvas *canvas, void *ctx) {
 		}
 	} else {
 		canvas_draw_str_aligned(canvas, 0, 0, AlignLeft, AlignTop, "Waiting for reading...");
+	}
+
+	goto release;
+
+bail:
+	canvas_draw_str_aligned(canvas, 0, 0, AlignLeft, AlignTop, "Couldn't acquire state.");
+
+release:
+	if (!release_mutex(mutex, state)) {
+		canvas_clear(canvas);
+		canvas_draw_str_aligned(canvas, 0, 0, AlignLeft, AlignTop, "Couldn't release mutex.");
 	}
 }
 
@@ -117,7 +133,7 @@ extern "C" int32_t bme680_main() {
 	}
 
 	view_port_input_callback_set(viewport, input_cb, queue);
-	view_port_draw_callback_set(viewport, draw_cb, state.get());
+	view_port_draw_callback_set(viewport, draw_cb, &mutex);
 	gui_add_view_port(gui, viewport, GuiLayerFullscreen);
 
 	if (!(state->timer = furi_timer_alloc(timer_cb, FuriTimerTypePeriodic, queue))) {
