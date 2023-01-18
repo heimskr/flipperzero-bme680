@@ -22,7 +22,7 @@
 // This lets you limit it at COMPILE-time
 // #ifndef LOG_LEVEL
 #undef LOG_LEVEL
-#define LOG_LEVEL 5
+#define LOG_LEVEL 6
 // #endif
 
 #if (LOG_LEVEL < 2)

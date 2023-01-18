@@ -45,17 +45,24 @@ static void draw_cb(Canvas *canvas, void *ctx) {
 			char buffer[46];
 			auto &bme = *state->bme;
 			int row = 0;
+			constexpr uint8_t x = 70;
 			auto print = [&](const char *label, float value) {
 				snprintf(buffer, sizeof(buffer), "%d.%.3d", int(value), int((value - int(value)) * 1'000));
 				canvas_set_font(canvas, FontPrimary);
-				canvas_draw_str_aligned(canvas, 0,  row   * 10, AlignLeft, AlignTop, label);
+				canvas_draw_str_aligned(canvas, 0, row   * 10, AlignLeft, AlignTop, label);
 				canvas_set_font(canvas, FontSecondary);
-				canvas_draw_str_aligned(canvas, 70, row++ * 10, AlignLeft, AlignTop, buffer);
+				canvas_draw_str_aligned(canvas, x, row++ * 10 + 1, AlignLeft, AlignTop, buffer);
 			};
 
-			print("Temperature:", bme.temperature);
-			print("Pressure:", bme.pressure);
-			print("Humidity:", bme.humidity);
+			print("Temperature", bme.temperature);
+			print("Pressure", bme.pressure);
+			print("Humidity", bme.humidity);
+
+			canvas_set_font(canvas, FontPrimary);
+			canvas_draw_str_aligned(canvas, 0, row * 10, AlignLeft, AlignTop, "Resistance");
+			canvas_set_font(canvas, FontSecondary);
+			snprintf(buffer, sizeof(buffer), "%lu", bme.gasResistance);
+			canvas_draw_str_aligned(canvas, x, row++ * 10 + 1, AlignLeft, AlignTop, buffer);
 		} else {
 			canvas_draw_str_aligned(canvas, 0, 0, AlignLeft, AlignTop, "Reading failed.");
 		}
@@ -124,12 +131,10 @@ extern "C" int32_t bme680_main() {
 
 	if (!state->init(queue)) {
 		ERROR(errs[(error = ERR_INIT_STATE)]);
-		goto bail;
 	}
 
-	if (!state->bme->begin()) {
+	if (!state->bme || !state->bme->begin()) {
 		ERROR("Couldn't begin BME680");
-		goto bail;
 	}
 
 	view_port_input_callback_set(viewport, input_cb, queue);
@@ -238,13 +243,17 @@ bool State::init(FuriMessageQueue *queue) {
 
 bool State::readData() {
 	hasRead = true;
+	lastReadResult = false;
 
-	if (bme == nullptr)
+	if (bme == nullptr) {
 		ERROR("bme is null");
-	else if (bme->performReading())
-		return lastReadResult = true;
-	else
-		ERROR("Reading failed");
+		return false;
+	}
 
-	return lastReadResult = false;
+	lastReadResult = (bme->beginIfNecessary() && bme->performReading());
+
+	if (!lastReadResult)
+		bme->begun = false;
+
+	return lastReadResult;
 }

@@ -58,7 +58,7 @@ void I2C::startInterrupts() {
 	furi_hal_gpio_add_int_callback(&SDA, +[](void *userdata) {
 		auto &i2c = *reinterpret_cast<I2C *>(userdata);
 		
-		// SCL is low, maybe cclock stretching
+		// SCL is low, maybe clock stretching
 		if (!furi_hal_gpio_read(&SCL))
 			return;
 
@@ -81,6 +81,7 @@ void I2C::startInterrupts() {
 }
 
 void I2C::stopInterrupts() {
+	INFO("stopInterrupts()");
 	furi_hal_gpio_remove_int_callback(&SCL);
 	furi_hal_gpio_remove_int_callback(&SDA);
 	// Reset GPIO pins to default state

@@ -12,6 +12,7 @@ struct BME680: private I2C, bme68x_dev {
 	float pressure = 0.f;
 	float humidity = 0.f;
 	uint32_t gasResistance = 0;
+	bool begun = false;
 
 	using I2C::I2C;
 	BME680();
@@ -20,6 +21,8 @@ struct BME680: private I2C, bme68x_dev {
 	static constexpr int readingComplete = 0;
 
 	bool begin();
+	bool beginIfNecessary();
+	void resetData();
 	float readTemperature();
 	float readPressure();
 	float readHumidity();
