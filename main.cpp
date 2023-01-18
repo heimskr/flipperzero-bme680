@@ -6,7 +6,7 @@
 #include <gui/gui.h>
 #include <input/input.h>
 
-// #include <memory>
+#include <memory>
 
 #define LOG_LEVEL 6
 
@@ -43,8 +43,7 @@ extern "C" int32_t bme680_main() {
 
 	err_t error = static_cast<err_t>(0);
 	Gui *gui = nullptr;
-	// std::unique_ptr<State> state;
-	State *state = nullptr;
+	std::unique_ptr<State> state;
 	ViewPort *viewport = nullptr;
 	ValueMutex mutex {0};
 	FuriMessageQueue *queue = nullptr;
@@ -62,14 +61,12 @@ extern "C" int32_t bme680_main() {
 		goto bail;
 	}
 
-	// if (!(state = std::make_unique<State>())) {
-	if (!(state = new State)) {
+	if (!(state = std::make_unique<State>())) {
 		ERROR(errs[(error = ERR_MALLOC_STATE)]);
 		goto bail;
 	}
 
-	// if (!init_mutex(&mutex, state.get(), sizeof(*state))) {
-	if (!init_mutex(&mutex, state, sizeof(*state))) {
+	if (!init_mutex(&mutex, state.get(), sizeof(*state))) {
 		ERROR(errs[(error = ERR_NO_MUTEX)]);
 		goto bail;
 	}
@@ -110,7 +107,6 @@ extern "C" int32_t bme680_main() {
 				default:                        ERROR(errs[(error = ERR_QUEUE_UNK)]);       goto bail;
 			}
 		} else {
-			// if (!(state = reinterpret_cast<State *>(acquire_mutex_block(&mutex)))) {
 			if (!acquire_mutex_block(&mutex)) {
 				ERROR(errs[(error = ERR_MUTEX_BLOCK)]);
 				goto bail;
@@ -154,8 +150,7 @@ extern "C" int32_t bme680_main() {
 
 			view_port_update(viewport);
 
-			// if (!release_mutex(&mutex, state.get())) {
-			if (!release_mutex(&mutex, state)) {
+			if (!release_mutex(&mutex, state.get())) {
 				ERROR(errs[(error = ERR_MUTEX_RELEASE)]);
 				goto bail;
 			}
@@ -188,9 +183,7 @@ bail:
 	// 	state->text = nullptr;
 	// }
 
-	// state.reset();
-	delete state;
-	state = nullptr;
+	state.reset();
 
 	delete bme;
 
