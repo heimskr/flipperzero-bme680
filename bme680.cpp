@@ -1,6 +1,7 @@
 // Credit: Adafruit BME680 library
 
 #include "bme680.h"
+#include "scd30_logging.h"
 
 BME680::BME680(): I2C(BME680_ADDRESS) {}
 
@@ -16,22 +17,34 @@ bool BME680::begin() {
 }
 
 float BME680::readTemperature(void) {
-	performReading();
+	const bool performed = performReading();
+	if (!performed)
+		INFO("readTemperature failed");
+
 	return temperature;
 }
 
 float BME680::readPressure(void) {
-	performReading();
+	const bool performed = performReading();
+	if (!performed)
+		INFO("readPressure failed");
+
 	return pressure;
 }
 
 float BME680::readHumidity(void) {
-	performReading();
+	const bool performed = performReading();
+	if (!performed)
+		INFO("readHumidity failed");
+
 	return humidity;
 }
 
 uint32_t BME680::readGas(void) {
-	performReading();
+	const bool performed = performReading();
+	if (!performed)
+		INFO("readGas failed");
+
 	return gasResistance;
 }
 
@@ -101,8 +114,10 @@ uint32_t BME680::beginReading() {
 	if (measureStart == 0) {
 		int8_t result = setOpMode(BME68X_FORCED_MODE);
 
-		if (result != BME68X_OK)
+		if (result != BME68X_OK) {
+			INFO("beginReading failed: %d", result);
 			return 0;
+		}
 
 		const uint32_t delayus_period = getMeasurementDuration(BME68X_FORCED_MODE) + (gasHeaterConf.heatr_dur * 1000);
 
@@ -116,8 +131,10 @@ uint32_t BME680::beginReading() {
 bool BME680::endReading() {
 	uint32_t meas_end = beginReading();
 
-	if (meas_end == 0)
+	if (meas_end == 0) {
+		INFO("meas_end == 0");
 		return false;
+	}
 
 	int remaining_millis = remainingReadingMillis();
 
@@ -132,8 +149,11 @@ bool BME680::endReading() {
 	bme68x_data data;
 	uint8_t n_fields;
 
-	if (getData(BME68X_FORCED_MODE, &data, n_fields) != BME68X_OK)
+	int8_t result = getData(BME68X_FORCED_MODE, &data, n_fields);
+	if (result != BME68X_OK) {
+		INFO("%d: result = %d", __LINE__, result);
 		return false;
+	}
 
 	if (n_fields) {
 		temperature = data.temperature;
@@ -555,8 +575,9 @@ uint8_t BME680::calculateGasWait(uint16_t dur) {
 }
 
 uint32_t BME680::millis() const {
-	const auto timer = furi_hal_cortex_timer_get(1);
-	return timer.start / (timer.value / 1000);
+	const auto timer = furi_hal_cortex_timer_get(1000);
+	INFO("start = %lu, value = %lu -> %lu", timer.start, timer.value, timer.start / timer.value);
+	return timer.start / timer.value;
 }
 
 int BME680::remainingReadingMillis() {
