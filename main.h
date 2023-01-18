@@ -4,7 +4,7 @@
 
 #include "i2c.h"
 
-extern "C" int32_t scd30_main();
+extern "C" int32_t bme680_main();
 
 enum class EventID {
 	None,

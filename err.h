@@ -5,7 +5,7 @@
 //----------------------------------------------------------------------------- ----------------------------------------
 // Application name
 //
-static const char* const  appName = "scd30";  //$ Name used in log files
+static const char* const  appName = "bme680";  //$ Name used in log files
 
 //----------------------------------------------------------------------------- ----------------------------------------
 // Error codes and messages

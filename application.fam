@@ -1,11 +1,11 @@
 # qv. https://github.com/flipperdevices/flipperzero-firmware/blob/dev/documentation/AppManifests.md
 
 App(
-    appid="scd30",
-    name="CO2 Sensor",
+    appid="bme680",
+    name="Temp Sensor",
     apptype=FlipperAppType.EXTERNAL,
-    entry_point="scd30_main",
-    cdefines=["APP_SCD30"],
+    entry_point="bme680_main",
+    cdefines=["APP_BME680"],
     requires=[
         "gui",
     ],
@@ -13,5 +13,5 @@ App(
     order=64,
     # fap_icon="scd30.png",
 	fap_author="Heimskr",
-	fap_weburl="https://github.com/heimskr/scd30"
+	fap_weburl="https://github.com/heimskr/flipperzero-bme680"
 )

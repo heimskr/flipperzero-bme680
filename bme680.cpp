@@ -1,7 +1,7 @@
 // Credit: Adafruit BME680 library
 
 #include "bme680.h"
-#include "scd30_logging.h"
+#include "bme680_logging.h"
 
 BME680::BME680(): I2C(BME680_ADDRESS) {}
 

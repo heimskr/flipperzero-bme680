@@ -1,7 +1,7 @@
 // Credit: https://github.com/NaejEL/flipperzero-i2ctools
 
 #include "i2c.h"
-#include "scd30_logging.h"
+#include "bme680_logging.h"
 
 int I2C::count = 0;
 

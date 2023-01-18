@@ -1,5 +1,4 @@
-#ifndef  SCD30_LOGGING_H_
-#define  SCD30_LOGGING_H_
+#pragma once
 
 // Based on https://github.com/csBlueChip/FlipperZero_plugin_howto/blob/main/bc_logging.h (MIT license)
 
@@ -69,5 +68,3 @@ struct ScopedDebug {
 	ScopedDebug(const char *func_): func(func_) { TRACE("(+) %s", func); }
 	~ScopedDebug() { TRACE("(-) %s", func); }
 };
-
-#endif //SCD30_LOGGING_H_

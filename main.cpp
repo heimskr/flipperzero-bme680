@@ -10,9 +10,9 @@
 
 #define LOG_LEVEL 6
 
-#include "scd30_logging.h"
+#include "bme680_logging.h"
 #include "err.h"
-#include "scd30.h"
+#include "main.h"
 #include "bme680.h"
 
 static void input_cb(InputEvent *event, FuriMessageQueue *queue) {
@@ -38,7 +38,7 @@ static void timer_cb(FuriMessageQueue *queue) {
 	furi_message_queue_put(queue, &message, 0);
 }
 
-extern "C" int32_t scd30_main() {
+extern "C" int32_t bme680_main() {
 	SCOPED_ENTER;
 
 	err_t error = static_cast<err_t>(0);
