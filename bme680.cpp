@@ -46,13 +46,19 @@ bool BME680::begin() {
 	// INFO("Heat Val = %d", calib.res_heat_val);
 	// INFO("SW Error = %d", calib.range_sw_err);
 
-	if (!setIIRFilterSize(BME68X_FILTER_SIZE_3)) WARN("setIIRFilterSize failed");
-	if (!setODR(BME68X_ODR_NONE)) WARN("setODR failed");
-	if (!setHumidityOversampling(BME68X_OS_2X)) WARN("setHumidityOversampling failed");
-	if (!setPressureOversampling(BME68X_OS_4X)) WARN("setPressureOversampling failed");
-	if (!setTemperatureOversampling(BME68X_OS_8X)) WARN("setTemperatureOversampling failed");
+	if (!setIIRFilterSize(BME68X_FILTER_SIZE_3))
+		WARN("setIIRFilterSize failed");
+	if (!setODR(BME68X_ODR_NONE))
+		WARN("setODR failed");
+	if (!setHumidityOversampling(BME68X_OS_2X))
+		WARN("setHumidityOversampling failed");
+	if (!setPressureOversampling(BME68X_OS_4X))
+		WARN("setPressureOversampling failed");
+	if (!setTemperatureOversampling(BME68X_OS_8X))
+		WARN("setTemperatureOversampling failed");
 	// 320*C for 150 ms
-	if (!setGasHeater(320, 150)) WARN("setGasHeater failed");
+	if (!setGasHeater(320, 150))
+		WARN("setGasHeater failed");
 
 	result = setOpMode(BME68X_FORCED_MODE);
 	if (result != BME68X_OK)
@@ -152,9 +158,6 @@ bool BME680::setODR(uint8_t odr) {
 }
 
 bool BME680::performReading() {
-	// const auto end_time = beginReading();
-	// INFO("start = %lu, finish = %lu", millis(), end_time);
-	// furi_delay_ms(end_time - millis() + 10);
 	return endReading();
 }
 
@@ -188,7 +191,6 @@ bool BME680::endReading() {
 
 	if (remaining_millis > 0) {
 		// Delay until the measurement is ready
-		// INFO("Delaying %lu", static_cast<uint32_t>(remaining_millis) * 2);
 		furi_delay_ms(static_cast<uint32_t>(remaining_millis) * 2);
 	}
 
@@ -295,7 +297,7 @@ int8_t BME680::readFieldData(uint8_t index, bme68x_data &data) {
 
 		TRACE("result = %d, status = %u", result, data.status);
 
-		/* read the raw data from the sensor */
+		// Read the raw data from the sensor
 		adc_pres = (uint32_t) (((uint32_t) buff[2] * 4096) | ((uint32_t) buff[3] * 16) | ((uint32_t) buff[4] / 16));
 		adc_temp = (uint32_t) (((uint32_t) buff[5] * 4096) | ((uint32_t) buff[6] * 16) | ((uint32_t) buff[7] / 16));
 		adc_hum  = (uint16_t) (((uint32_t) buff[8] *  256) |  (uint32_t) buff[9]);
