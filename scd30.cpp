@@ -6,11 +6,13 @@
 #include <gui/gui.h>
 #include <input/input.h>
 
+#include <memory>
+
 #define LOG_LEVEL 6
 
 #include "scd30_logging.h"
-#include "scd30.h"
 #include "err.h"
+#include "scd30.h"
 
 static void input_cb(InputEvent *event, FuriMessageQueue *queue) {
 	SCOPED_ENTER;
@@ -40,7 +42,7 @@ extern "C" int32_t scd30_main() {
 
 	err_t error = static_cast<err_t>(0);
 	Gui *gui = nullptr;
-	State *state = nullptr;
+	std::unique_ptr<State> state;
 	ViewPort *viewport = nullptr;
 	ValueMutex mutex {0};
 	FuriMessageQueue *queue = nullptr;
@@ -57,18 +59,23 @@ extern "C" int32_t scd30_main() {
 		goto bail;
 	}
 
-	if (!(state = new State(*gui))) {
+	if (!(state = std::make_unique<State>())) {
 		ERROR(errs[(error = ERR_MALLOC_STATE)]);
 		goto bail;
 	}
 
-	if (!init_mutex(&mutex, state, sizeof(*state))) {
+	if (!init_mutex(&mutex, state.get(), sizeof(*state))) {
 		ERROR(errs[(error = ERR_NO_MUTEX)]);
 		goto bail;
 	}
 
 	if (!(viewport = view_port_alloc())) {
 		ERROR(errs[(error = ERR_MALLOC_VIEW)]);
+		goto bail;
+	}
+
+	if (!state->init(queue)) {
+		ERROR(errs[(error = ERR_INIT_STATE)]);
 		goto bail;
 	}
 
@@ -164,6 +171,18 @@ bail:
 	return 0;
 }
 
-State::State(Gui &gui) {
+bool State::init(FuriMessageQueue *queue) {
+	furi_assert(this);
 
+	if (!(timer = furi_timer_alloc(timer_cb, FuriTimerTypePeriodic, queue))) {
+		ERROR(errs[ERR_NO_TIMER]);
+		return false;
+	}
+
+	// if (!(i2c = new I2C)) {
+	// 	ERROR(errs[ERR_NO_I2C]);
+	// 	return false;
+	// }
+
+	return true;
 }

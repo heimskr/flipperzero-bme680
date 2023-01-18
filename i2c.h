@@ -11,7 +11,7 @@
 #define MAX_MESSAGE_SIZE 128
 #define MAX_RECORDS 128
 
-namespace I2C {
+struct I2C {
 	enum class BusState {Free, Started};
 
 	struct Frame {
@@ -21,23 +21,20 @@ namespace I2C {
 		uint8_t dataIndex;
 	};
 
-	struct Sniffer {
-		bool started = false;
-		bool first = true;
-		BusState state = BusState::Free;
-		Frame frames[MAX_RECORDS];
-		uint8_t frameIndex = 0;
-		uint8_t menuIndex = 0;
-		uint8_t rowIndex = 0;
+	bool started = false;
+	bool first = true;
+	BusState state = BusState::Free;
+	Frame frames[MAX_RECORDS];
+	uint8_t frameIndex = 0;
+	uint8_t menuIndex = 0;
+	uint8_t rowIndex = 0;
 
-		Sniffer();
-		~Sniffer();
+	I2C();
+	~I2C();
 
-		void clearBuffers();
-		void startInterrupts();
+	void clearBuffers();
+	void startInterrupts();
 
-		static int count;
-	};
-
-	void stopInterrupts();
-}
+	static int count;
+	static void stopInterrupts();
+};

@@ -1,5 +1,4 @@
-#ifndef ERR_H_
-#define ERR_H_
+#pragma once
 
 // Based on https://github.com/csBlueChip/FlipperZero_plugin_howto/blob/main/err.h
 
@@ -41,6 +40,9 @@ static const char* const  appName = "scd30";  //$ Name used in log files
 	esPrial(31, WARN_ANIM_STOP     , "Animate - Already stopped") \
 	esPrial(32, ERR_TIMER_START    , "Animate - Cannot start timer") \
 	esPrial(33, ERR_TIMER_STOP     , "Animate - Cannot stop timer") \
+\
+	esPrial(34, ERR_INIT_STATE     , "State - initialization failed") \
+	esPrial(35, ERR_NO_I2C         , "I2C - initialization failed") \
 //[EOT]
 
 // Declare list extraction macros
@@ -60,8 +62,6 @@ typedef enum err { FOREACH_ES(ES_ENUM) } err_t;
 #endif
 
 // This is a header file, clean up
-#undef  ES_ENUM
-#undef  ES_STRING
-#undef  FOREACH_ES
-
-#endif // ERR_H_
+#undef ES_ENUM
+#undef ES_STRING
+#undef FOREACH_ES
